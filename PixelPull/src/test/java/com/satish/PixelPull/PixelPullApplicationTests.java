@@ -1,4 +1,4 @@
-package com.pixelpull.pixel_pull;
+package com.satish.PixelPull;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

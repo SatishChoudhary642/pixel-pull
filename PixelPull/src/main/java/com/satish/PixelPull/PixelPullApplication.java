@@ -1,4 +1,4 @@
-package com.pixelpull.pixel_pull;
+package com.satish.PixelPull;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
