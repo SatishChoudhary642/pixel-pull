@@ -17,30 +17,25 @@ The system uses a decoupled architecture to separate the heavy ML processing fro
 
 ```mermaid
 graph TD
-    %% Define styles
-    classDef client fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef api fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef db fill:#bfb,stroke:#333,stroke-width:2px;
-    classDef worker fill:#fbf,stroke:#333,stroke-width:2px;
 
-    Photographer(["Photographer"]):::client
-    Attendee(["Attendee"]):::client
+    Photographer(["Photographer"])
+    Attendee(["Attendee"])
 
     subgraph "Spring Boot API"
-        AuthController["Auth Controller<br>/api/auth/login"]:::api
-        UploadController["Photo Controller<br>/api/photos/upload"]:::api
-        SearchController["Search Controller<br>/api/photos/search"]:::api
-        PhotoService["Photo Service"]:::api
+        AuthController["Auth Controller<br>/api/auth/login"]
+        UploadController["Photo Controller<br>/api/photos/upload"]
+        SearchController["Search Controller<br>/api/photos/search"]
+        PhotoService["Photo Service"]
     end
 
     subgraph "Storage"
-        Postgres[("PostgreSQL Database")]:::db
-        DiskStorage["Local Disk (/uploads)"]:::db
+        Postgres[("PostgreSQL Database")]
+        DiskStorage["Local Disk (/uploads)"]
     end
 
     subgraph "Worker"
-        CPPWorker["C++ Worker Daemon"]:::worker
-        CPPCLI["C++ Extractor CLI"]:::worker
+        CPPWorker["C++ Worker Daemon"]
+        CPPCLI["C++ Extractor CLI"]
     end
 
     %% Photographer Flow
