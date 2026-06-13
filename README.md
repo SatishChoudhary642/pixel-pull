@@ -1,21 +1,19 @@
-# PixelPull 📸
+# PixelPull
 
-PixelPull is a production-grade, highly optimized microservice application designed to solve a massive problem at college fests and large events: **Finding your photos out of thousands.**
+A backend service for event photo distribution. Attendees upload a single selfie to instantly retrieve all group photos containing their face from a specific event batch.
 
-Instead of scrolling through hundreds of photos, an attendee simply uploads a selfie, and PixelPull instantly returns every group photo they are in using advanced facial recognition and vectorized mathematical searching.
+## Features
 
-## 🌟 Features
-* **Stateless JWT Authentication:** Secure registration and login flows for Event Photographers.
-* **Batch Scoped Search:** Photographers get a 6-character `accessCode` for their events, restricting search space and dropping search times to under `O(M)`.
-* **C++ Dlib Background Processing:** A native C++ worker continuously polls the database, extracting every face in an image into 128D vectors.
-* **Lightning Fast Search:** Vector math calculated entirely in Java memory using Euclidean distance formulas against PostgreSQL records.
-* **Static Asset Serving:** Built-in Spring Boot resource handlers to serve physical image files directly to frontends.
+- **JWT Authentication**: Secured endpoints allowing only registered photographers to create events and upload batches.
+- **Batch Isolation**: Photos are grouped by an `accessCode`. Searches are scoped to a specific event, significantly reducing vector comparison overhead.
+- **Asynchronous ML Worker**: A containerized C++ worker (using Dlib) polls the database to asynchronously extract 128D facial vectors from uploaded group photos.
+- **In-Memory Vector Search**: Sub-second facial matching achieved via Java-based Euclidean distance calculations against PostgreSQL records.
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
-PixelPull uses an asynchronous microservice architecture to decouple the heavy Machine Learning processing from the high-traffic Spring Boot REST API.
+The system uses a decoupled architecture to separate the heavy ML processing from the Spring Boot API.
 
 ```mermaid
 graph TD
@@ -25,113 +23,102 @@ graph TD
     classDef db fill:#bfb,stroke:#333,stroke-width:2px;
     classDef worker fill:#fbf,stroke:#333,stroke-width:2px;
 
-    %% Client Actors
-    Photographer([Photographer 📸]):::client
-    Attendee([Attendee 📱]):::client
+    Photographer(["Photographer"]):::client
+    Attendee(["Attendee"]):::client
 
-    %% Spring Boot API
-    subgraph Spring Boot Application
-        AuthController[Auth Controller<br/>/api/auth/login]:::api
-        UploadController[Photo Controller<br/>/api/photos/upload]:::api
-        SearchController[Search Controller<br/>/api/photos/search]:::api
-        PhotoService[Photo Service<br/>(Java Euclidean Math)]:::api
+    subgraph "Spring Boot API"
+        AuthController["Auth Controller<br>/api/auth/login"]:::api
+        UploadController["Photo Controller<br>/api/photos/upload"]:::api
+        SearchController["Search Controller<br>/api/photos/search"]:::api
+        PhotoService["Photo Service"]:::api
     end
 
-    %% Storage
-    subgraph Storage & Database
-        Postgres[(PostgreSQL Database<br/>users, photos, photo_faces)]:::db
-        DiskStorage[Local Disk /uploads]:::db
+    subgraph "Storage"
+        Postgres[("PostgreSQL Database")]:::db
+        DiskStorage["Local Disk (/uploads)"]:::db
     end
 
-    %% Background Worker
-    subgraph Docker
-        CPPWorker[C++ Worker Daemon<br/>(Polling Database)]:::worker
-        CPPCLI[C++ Extractor CLI<br/>(Synchronous)]:::worker
+    subgraph "Worker"
+        CPPWorker["C++ Worker Daemon"]:::worker
+        CPPCLI["C++ Extractor CLI"]:::worker
     end
 
-    %% --- Photographer Flow ---
+    %% Photographer Flow
     Photographer -- "1. Login (Gets JWT)" --> AuthController
-    Photographer -- "2. Upload 500 Photos + JWT" --> UploadController
-    UploadController -- "3. Save Images" --> DiskStorage
-    UploadController -- "4. Save Metadata (Status: PENDING)" --> Postgres
+    Photographer -- "2. Upload Photos" --> UploadController
+    UploadController -- "3. Save files" --> DiskStorage
+    UploadController -- "4. Save 'PENDING' state" --> Postgres
 
-    %% --- Background Processing Flow ---
-    CPPWorker -- "5. Poll DB every 5s" --> Postgres
-    Postgres -. "6. Returns up to 10 PENDING photos" .-> CPPWorker
-    CPPWorker -- "7. Read Image File" --> DiskStorage
-    CPPWorker -- "8. Detect multiple faces & compute 128D Vectors" --> CPPWorker
-    CPPWorker -- "9. Update Status PROCESSED & Insert vectors" --> Postgres
+    %% Background Processing
+    CPPWorker -- "5. Poll DB" --> Postgres
+    Postgres -. "6. Return PENDING photos" .-> CPPWorker
+    CPPWorker -- "7. Read images" --> DiskStorage
+    CPPWorker -- "8. Detect multiple faces" --> CPPWorker
+    CPPWorker -- "9. Insert 128D vectors" --> Postgres
 
-    %% --- Attendee Search Flow ---
-    Attendee -- "10. Upload Selfie + AccessCode" --> SearchController
-    SearchController -- "11. Run face_extractor synchronously" --> CPPCLI
-    CPPCLI -. "12. Return Selfie 128D Vector" .-> SearchController
-    SearchController -- "13. Pass to Service" --> PhotoService
-    PhotoService -- "14. Get all vectors for AccessCode" --> Postgres
-    PhotoService -- "15. Calculate Math.sqrt() distances" --> PhotoService
-    PhotoService -. "16. Return matching Photo URLs" .-> Attendee
+    %% Attendee Search Flow
+    Attendee -- "10. Upload Selfie + Code" --> SearchController
+    SearchController -- "11. Run face_extractor" --> CPPCLI
+    CPPCLI -. "12. Return 128D Vector" .-> SearchController
+    SearchController -- "13. Compare vectors" --> PhotoService
+    PhotoService -- "14. Query batch vectors" --> Postgres
+    PhotoService -. "15. Return image URLs" .-> Attendee
 ```
 
 ---
 
-## 🚀 How to Run Locally
+## Running Locally
 
-### Prerequisites
-* **Docker & Docker Compose** (for PostgreSQL and the C++ Worker container).
-* **Java 17** and **Maven**.
+**Dependencies:** Docker, Docker Compose, Java 17, Maven.
 
-### Step 1: Start Infrastructure & ML Worker
-Open your terminal in the root project directory and run:
-```bash
-# This will spin up the database and build the C++ container. 
-# NOTE: The first run takes 15-30 minutes for Dlib to compile natively!
-docker compose up -d --build
-```
+1. Start the PostgreSQL database and C++ worker container:
+   ```bash
+   docker compose up -d --build
+   ```
+   *(Note: The initial Docker build compiles Dlib natively and takes ~15-30 minutes).*
 
-### Step 2: Start the Spring Boot API
-In a separate terminal, navigate into the `PixelPull` folder:
-```bash
-cd PixelPull
-.\mvnw spring-boot:run
-```
-
----
-
-## 📖 API Usage Guide
-
-### For Photographers
-1. **Register an Account:**
-   `POST /api/auth/register`
-   ```json
-   {
-     "username": "admin",
-     "password": "password123",
-     "email": "admin@example.com"
-   }
+2. Start the Spring Boot API:
+   ```bash
+   cd PixelPull
+   ./mvnw spring-boot:run
    ```
 
-2. **Login (Receive JWT):**
-   `POST /api/auth/login`
-   *(Returns `{"jwt": "eyJh..."}`)*
-
-3. **Upload an Event Batch:**
-   `POST /api/photos/upload`
-   * **Headers:** `Authorization: Bearer <your_jwt>`
-   * **Body (Multipart/form-data):** Key `files` containing multiple images.
-
-4. **Get Your Batches & Access Codes:**
-   `GET /api/photos/my-batches`
-   * **Headers:** `Authorization: Bearer <your_jwt>`
-   * *(Returns your `accessCode` to give to attendees).*
-
-### For Attendees
-1. **Search for Yourself (Public Endpoint!):**
-   `POST /api/photos/search`
-   * **Body (Multipart/form-data):**
-     * Key `selfie`: Your face image.
-     * Key `accessCode`: The 6-character code given by the photographer.
-   * **Response:** Returns JSON with full, clickable `imageUrl` paths to your matched group photos!
-
 ---
 
-*Built for absolute performance, massive concurrency, and secure data scoping.*
+## API Reference
+
+### 1. Photographer (Requires Auth)
+
+**Register:**
+`POST /api/auth/register`
+```json
+{
+  "username": "admin",
+  "password": "password123",
+  "email": "admin@example.com"
+}
+```
+
+**Login:**
+`POST /api/auth/login`
+Returns a JWT token.
+
+**Upload Photos:**
+`POST /api/photos/upload`
+Headers: `Authorization: Bearer <token>`
+Body: `multipart/form-data` with `files` (multiple images allowed).
+
+**List Batches:**
+`GET /api/photos/my-batches`
+Headers: `Authorization: Bearer <token>`
+Returns the `accessCode` mapping for uploaded events.
+
+### 2. Attendee (Public)
+
+**Search Photos:**
+`POST /api/photos/search`
+Body: `multipart/form-data`
+- `selfie`: Image file of the attendee's face.
+- `accessCode`: 6-character code provided by the photographer.
+
+Returns a list of URLs pointing to the matched group photos.
