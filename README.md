@@ -64,80 +64,54 @@ graph TD
 
 ## ML Pipeline Architecture
 
-This diagram shows the internal flow of a single photo through the C++ Dlib ML worker — from raw JPEG on disk to 128-dimensional face vectors stored in PostgreSQL.
+Flow of a single photo through the C++ Dlib worker — one stage per face found.
 
 ```mermaid
 flowchart TD
-    A["JPEG File on Disk\n/var/pixelpull/uploads/batch/photo.jpg"] --> B
+    A["Group Photo\nJPEG on disk"] --> B
 
-    subgraph INIT ["Worker Startup (Once)"]
-        M1["Load HOG Face Detector\ndlib::get_frontal_face_detector()"] 
-        M2["Deserialize Shape Predictor\nshape_predictor_68_face_landmarks.dat"]
-        M3["Deserialize ResNet-34\ndlib_face_recognition_resnet_model_v1.dat"]
+    subgraph LOAD ["Image Loading"]
+        B["Decode JPEG\ninto RGB pixel grid"]
     end
 
-    subgraph LOAD ["Stage 1 - Image Loading"]
-        B["dlib::load_image()\nDecode JPEG into raw pixel grid\n1920x1080 x 3 channels = 6.2M numbers in RAM"]
+    subgraph DETECT ["Face Detection · HOG + SVM"]
+        C["Compute edge gradients\nacross image in 8x8 blocks"]
+        D["Slide detection window\nat multiple scales"]
+        E["SVM classifies each window\nFace / Not Face"]
+        C --> D --> E
     end
 
-    subgraph DETECT ["Stage 2 - Face Detection (HOG)"]
-        C["Divide image into 8x8 pixel blocks"]
-        D["Compute gradient direction per block\nHistogram of Oriented Gradients"]
-        E["Slide 64x128 window across image\nat multiple scales"]
-        F["SVM Classifier per window\nFace or Not Face"]
-        G["Output: N bounding rectangles\none per detected face"]
-        C --> D --> E --> F --> G
+    subgraph PERFACE ["Per Detected Face (runs N times)"]
+        F["Landmark Detection\n68 keypoints — eyes, nose, mouth"]
+        G["Face Alignment\nCrop + rotate to 150x150px\nusing keypoints as anchors"]
+        H["ResNet-34 Embedding\n34 conv layers → 128 float numbers"]
+        F --> G --> H
     end
 
-    subgraph LANDMARK ["Stage 3 - Landmark Detection (per face)"]
-        H["sp(img, faceRect)\nShape Predictor runs on each\nbounding box region"]
-        I["Output: 68 x,y coordinate pairs\nJawline, eyebrows, nose, eyes, mouth"]
-        H --> I
-    end
-
-    subgraph ALIGN ["Stage 4 - Face Alignment (per face)"]
-        J["get_face_chip_details(shape, 150px, 0.25 padding)\nCompute rotation + scale transform\nusing landmark anchor points"]
-        K["extract_image_chip()\nWarp and crop face to\nstandardized 150x150 pixel chip\nEyes always horizontally level"]
-        J --> K
-    end
-
-    subgraph EMBED ["Stage 5 - Embedding Generation (per face)"]
-        L["ResNet-34 Forward Pass\n150x150 face chip through\n34 convolutional layers"]
-        N["alevel4: 32 filters\nalevel3: 64 filters\nalevel2: 128 filters\nalevel1: 256 filters\nalevel0: 256 filters"]
-        O["fc_no_bias layer\nCompress to 128 values"]
-        P["Output: 128D float vector\nMathematical face fingerprint"]
-        L --> N --> O --> P
-    end
-
-    subgraph STORE ["Stage 6 - Database Storage"]
-        Q["BEGIN transaction"]
-        R["INSERT INTO photo_faces\nphoto_id, face_vector for each face"]
-        S["UPDATE photos SET\nstatus=PROCESSED"]
-        T["COMMIT"]
-        Q --> R --> S --> T
+    subgraph STORE ["PostgreSQL Storage"]
+        I["INSERT face vector\ninto photo_faces"]
+        J["UPDATE photo\nstatus = PROCESSED"]
+        I --> J
     end
 
     B --> C
-    G --> H
-    I --> J
-    K --> L
-    P --> Q
-
-    INIT -.->|models already in RAM| DETECT
-    INIT -.->|models already in RAM| LANDMARK
-    INIT -.->|models already in RAM| EMBED
+    E -->|"N face rectangles"| F
+    H -->|"128D vector per face"| I
 ```
 
-### Key Numbers at Each Stage
+| Stage | What goes in | What comes out |
+|-------|-------------|----------------|
+| Image Load | JPEG file (~3MB) | Raw pixel grid (~6M numbers) |
+| Face Detection | Full pixel grid | N bounding boxes |
+| Landmark Detection | One bounding box | 68 (x,y) points |
+| Face Alignment | 68 landmarks | 150×150 standardized chip |
+| ResNet Embedding | 150×150 chip | 128 float numbers |
+| Storage | 128 floats | 1 row in `photo_faces` per face |
 
-| Stage | Input | Output |
-|-------|-------|--------|
-| Image Load | JPEG file (~3MB compressed) | Raw pixel grid (6.2M numbers) |
-| Face Detection | Full image grid | N bounding rectangles |
-| Landmark Detection | One face rectangle | 68 (x,y) coordinate pairs |
-| Face Alignment | 68 landmarks | 150×150 pixel chip |
-| Embedding | 150×150 chip | 128 float numbers |
-| Storage | 128 floats | 1 row in `photo_faces` table |
+
+
+
+
 
 ---
 
