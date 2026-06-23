@@ -103,6 +103,13 @@
 			<version>0.11.5</version>
 			<scope>runtime</scope>
 		</dependency>
+
+		<!-- Hibernate support for PostgreSQL array types (Double[], etc.) -->
+		<dependency>
+			<groupId>io.hypersistence</groupId>
+			<artifactId>hypersistence-utils-hibernate-63</artifactId>
+			<version>3.8.3</version>
+		</dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>

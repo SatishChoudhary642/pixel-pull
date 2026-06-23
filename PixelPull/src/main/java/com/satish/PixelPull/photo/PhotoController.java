@@ -27,24 +27,35 @@ public class PhotoController {
     @PostMapping("/upload")
     public ResponseEntity<?> uploadPhotos(@RequestParam("files") List<MultipartFile> files,
                                           @AuthenticationPrincipal UserDetails userDetails) {
-        
+
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest().body("No files provided");
         }
-        
+
+        // Validate all files are images before processing any of them
+        List<String> allowedTypes = List.of("image/jpeg", "image/png", "image/jpg");
+        for (MultipartFile file : files) {
+            String contentType = file.getContentType();
+            if (contentType == null || !allowedTypes.contains(contentType.toLowerCase())) {
+                return ResponseEntity.badRequest()
+                        .body("Invalid file type: '" + contentType + "'. Only JPEG and PNG images are allowed.");
+            }
+        }
+
         log.info("Received upload request with {} files", files.size());
-        
+
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         List<Photo> uploadedPhotos = photoService.uploadPhotos(files, user);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Upload successful");
         response.put("totalFiles", files.size());
         response.put("successfulUploads", uploadedPhotos.size());
         response.put("batchId", uploadedPhotos.isEmpty() ? null : uploadedPhotos.get(0).getBatchId());
-        
+        response.put("accessCode", uploadedPhotos.isEmpty() ? null : uploadedPhotos.get(0).getAccessCode());
+
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
     

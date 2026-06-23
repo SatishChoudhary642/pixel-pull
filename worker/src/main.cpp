@@ -42,10 +42,7 @@ int main() {
         // Process each photo
         for (const auto& photo : pendingPhotos) {
             std::cout << "Processing photo ID: " << photo.id << std::endl;
-            
-            // Update status to PROCESSING
-            db.updatePhotoStatus(photo.id, "PROCESSING");
-            
+            // Status already set to PROCESSING atomically in getPendingPhotos()
             try {
                 // Extract face vectors (prepend container upload dir to relative path)
                 std::string fullPath = "/var/pixelpull/uploads/" + photo.filePath;

@@ -38,17 +38,26 @@ void DBManager::disconnect() {
 
 std::vector<PendingPhoto> DBManager::getPendingPhotos(int limit) {
     std::vector<PendingPhoto> photos;
-    
-    std::string query = "SELECT id, file_path FROM photos WHERE status = 'PENDING' LIMIT " + std::to_string(limit);
-    
+
+    // BEGIN transaction — required for FOR UPDATE SKIP LOCKED
+    PGresult* beginRes = PQexec(conn, "BEGIN");
+    PQclear(beginRes);
+
+    // FOR UPDATE: lock the selected rows
+    // SKIP LOCKED: if another worker already locked them, skip and take the next ones
+    // This prevents two workers from processing the same photo twice
+    std::string query = "SELECT id, file_path FROM photos WHERE status = 'PENDING' LIMIT "
+                        + std::to_string(limit) + " FOR UPDATE SKIP LOCKED";
+
     PGresult* res = PQexec(conn, query.c_str());
-    
+
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         std::cerr << "Query failed: " << PQerrorMessage(conn) << std::endl;
         PQclear(res);
+        PQexec(conn, "ROLLBACK");
         return photos;
     }
-    
+
     int rows = PQntuples(res);
     for (int i = 0; i < rows; i++) {
         PendingPhoto photo;
@@ -56,8 +65,23 @@ std::vector<PendingPhoto> DBManager::getPendingPhotos(int limit) {
         photo.filePath = PQgetvalue(res, i, 1);
         photos.push_back(photo);
     }
-    
+
     PQclear(res);
+
+    // Immediately update the status to PROCESSING so the lock can be released
+    // The FOR UPDATE lock is held until we COMMIT or ROLLBACK
+    if (!photos.empty()) {
+        std::string ids = "";
+        for (size_t i = 0; i < photos.size(); i++) {
+            ids += std::to_string(photos[i].id);
+            if (i < photos.size() - 1) ids += ",";
+        }
+        std::string updateQuery = "UPDATE photos SET status = 'PROCESSING' WHERE id IN (" + ids + ")";
+        PGresult* updateRes = PQexec(conn, updateQuery.c_str());
+        PQclear(updateRes);
+    }
+
+    PQexec(conn, "COMMIT");
     return photos;
 }
 

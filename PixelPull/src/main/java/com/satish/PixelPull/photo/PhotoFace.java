@@ -1,7 +1,9 @@
 package com.satish.pixelpull.photo;
 
+import io.hypersistence.utils.hibernate.type.array.DoubleArrayType;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.Type;
 
 @Data
 @Entity
@@ -16,6 +18,9 @@ public class PhotoFace {
     @JoinColumn(name = "photo_id", nullable = false)
     private Photo photo;
 
+    // @Type tells Hibernate to use hypersistence's DoubleArrayType
+    // which knows how to read/write PostgreSQL's double precision[] column
+    @Type(DoubleArrayType.class)
     @Column(name = "face_vector", columnDefinition = "double precision[]")
-    private Double[] faceVector;
+    private double[] faceVector;
 }
