@@ -24,8 +24,8 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
-    private final UserDetailsServiceImpl userDetailsService;
-    private final JwtUtil jwtUtil;
+    private final com.satish.pixelpull.auth.UserDetailsServiceImpl userDetailsService;
+    private final com.satish.pixelpull.auth.JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
