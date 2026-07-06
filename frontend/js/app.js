@@ -1,5 +1,5 @@
-// Shared API layer — all calls go through here
-const API = {
+// Backend API URL — Spring Boot runs on port 8081
+const API_BASE = 'http://localhost:8081';
 
   async register(username, email, password) {
     const res = await fetch('/api/auth/register', {
