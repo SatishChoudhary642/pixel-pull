@@ -29,42 +29,42 @@ Pixel-Pull-Project/
 
 ```mermaid
 graph TD
-    Photographer(["Photographer"])
-    Attendee(["Attendee"])
+    Photographer[Photographer]
+    Attendee[Attendee]
 
-    subgraph "Spring Boot API"
-        AuthController["Auth Controller"]
-        UploadController["Photo Controller"]
-        SearchController["Search Controller"]
-        PhotoService["Photo Service"]
+    subgraph API [Spring Boot API]
+        AuthController[Auth Controller]
+        UploadController[Photo Controller]
+        SearchController[Search Controller]
+        PhotoService[Photo Service]
     end
 
-    subgraph "Storage"
-        Postgres[("PostgreSQL")]
-        DiskStorage["Local Disk"]
+    subgraph Storage [Storage]
+        Postgres[(PostgreSQL)]
+        DiskStorage[Local Disk]
     end
 
-    subgraph "Worker"
-        CPPWorker["C++ Worker Daemon"]
-        CPPCLI["C++ Extractor CLI"]
+    subgraph Worker [Worker]
+        CPPWorker[C++ Worker Daemon]
+        CPPCLI[C++ Extractor CLI]
     end
 
-    Photographer -- "1. Login" --> AuthController
-    Photographer -- "2. Upload Photos" --> UploadController
-    UploadController -- "3. Save files" --> DiskStorage
-    UploadController -- "4. Save PENDING state" --> Postgres
+    Photographer -->|1. Login| AuthController
+    Photographer -->|2. Upload Photos| UploadController
+    UploadController -->|3. Save files| DiskStorage
+    UploadController -->|4. Save PENDING state| Postgres
 
-    CPPWorker -- "5. Poll DB" --> Postgres
-    Postgres -. "6. Return PENDING photos" .-> CPPWorker
-    CPPWorker -- "7. Read images" --> DiskStorage
-    CPPWorker -- "8. Insert face vectors" --> Postgres
+    CPPWorker -->|5. Poll DB| Postgres
+    Postgres -.->|6. Return PENDING photos| CPPWorker
+    CPPWorker -->|7. Read images| DiskStorage
+    CPPWorker -->|8. Insert face vectors| Postgres
 
-    Attendee -- "9. Upload Selfie + Code" --> SearchController
-    SearchController -- "10. Run face extractor" --> CPPCLI
-    CPPCLI -. "11. Return face vector" .-> SearchController
-    SearchController -- "12. Compare vectors" --> PhotoService
-    PhotoService -- "13. Query batch vectors" --> Postgres
-    PhotoService -. "14. Return image URLs" .-> Attendee
+    Attendee -->|9. Upload Selfie + Code| SearchController
+    SearchController -->|10. Run face extractor| CPPCLI
+    CPPCLI -.->|11. Return face vector| SearchController
+    SearchController -->|12. Compare vectors| PhotoService
+    PhotoService -->|13. Query batch vectors| Postgres
+    PhotoService -.->|14. Return image URLs| Attendee
 ```
 
 ---
