@@ -111,19 +111,31 @@ public class PhotoService {
         return photoRepository.countPending();
     }
 
-    public List<Map<String, String>> getMyBatches(User user) {
+    public List<Map<String, Object>> getMyBatches(User user) {
         List<String> batchIds = photoRepository.findDistinctBatchesByUserId(user.getId());
-        List<Map<String, String>> batches = new ArrayList<>();
+        List<Map<String, Object>> batches = new ArrayList<>();
 
         for (String batchId : batchIds) {
             List<Photo> photos = photoRepository.findByBatchId(batchId);
             if (!photos.isEmpty()) {
                 Photo firstPhoto = photos.get(0);
-                Map<String, String> batchInfo = new HashMap<>();
+                long processed = photos.stream().filter(p -> p.getStatus() == PhotoStatus.PROCESSED).count();
+                long failed = photos.stream().filter(p -> p.getStatus() == PhotoStatus.FAILED).count();
+                long total = photos.size();
+
+                // Derive a simple status: PROCESSED if all done, FAILED if all failed, else PROCESSING
+                String batchStatus;
+                if (processed == total) batchStatus = "PROCESSED";
+                else if (failed == total) batchStatus = "FAILED";
+                else batchStatus = "PROCESSING";
+
+                Map<String, Object> batchInfo = new HashMap<>();
                 batchInfo.put("batchId", batchId);
                 batchInfo.put("accessCode", firstPhoto.getAccessCode());
-                batchInfo.put("photoCount", String.valueOf(photos.size()));
+                batchInfo.put("photoCount", total);
+                batchInfo.put("processedCount", processed);
                 batchInfo.put("uploadTime", firstPhoto.getUploadTime().toString());
+                batchInfo.put("status", batchStatus);
                 batches.add(batchInfo);
             }
         }

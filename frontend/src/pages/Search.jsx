@@ -135,7 +135,7 @@ export default function Search() {
           {loading && (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
               <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-              <p style={{ marginTop: '1.5rem', fontFamily: 'Space Mono', fontSize: '0.9rem' }}>Extracting 128D Vector...</p>
+              <p style={{ marginTop: '1.5rem', fontFamily: 'Space Mono', fontSize: '0.9rem' }}>Searching...</p>
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           )}
@@ -156,8 +156,8 @@ export default function Search() {
                   {results.photos.map((photo, i) => (
                     <div key={i} className="glass-panel animate-fade-in" style={{ padding: '0.5rem', overflow: 'hidden', animationDelay: `${i * 100}ms` }}>
                       <div style={{ aspectRatio: '3/4', borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
-                        <img src={`http://localhost:8081${photo.imageUrl}`} alt="Found" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <a href={`http://localhost:8081${photo.imageUrl}`} download target="_blank" rel="noreferrer" style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '0.3rem 0.8rem', borderRadius: 20, fontSize: '0.75rem', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <img src={photo.imageUrl} alt="Found" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <a href={photo.imageUrl} download target="_blank" rel="noreferrer" style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '0.3rem 0.8rem', borderRadius: 20, fontSize: '0.75rem', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
                           Open Full
                         </a>
                       </div>

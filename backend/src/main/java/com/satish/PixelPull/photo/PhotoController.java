@@ -60,9 +60,18 @@ public class PhotoController {
     }
     
     @GetMapping("/batch/{batchId}")
-    public ResponseEntity<List<Photo>> getPhotosByBatch(@PathVariable String batchId) {
+    public ResponseEntity<List<Map<String, Object>>> getPhotosByBatch(@PathVariable String batchId) {
         List<Photo> photos = photoService.getPhotosByBatch(batchId);
-        return ResponseEntity.ok(photos);
+        List<Map<String, Object>> dtos = photos.stream().map(photo -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", photo.getId());
+            dto.put("originalFileName", photo.getOriginalFileName());
+            dto.put("uploadTime", photo.getUploadTime());
+            dto.put("status", photo.getStatus());
+            dto.put("imageUrl", "/images/" + photo.getFilePath());
+            return dto;
+        }).toList();
+        return ResponseEntity.ok(dtos);
     }
     
     @GetMapping("/pending-count")
