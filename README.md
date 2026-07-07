@@ -12,19 +12,6 @@ A full-stack event photo distribution platform. Photographers upload an event al
 
 ---
 
-## Project Structure
-
-```
-Pixel-Pull-Project/
-├── frontend/          # React + Vite UI (port 5173)
-├── backend/           # Spring Boot API (port 8081)
-│   ├── compose.yaml   # PostgreSQL + C++ worker containers
-│   └── uploads/       # Uploaded photos (git-ignored)
-└── worker/            # C++ Dlib face extraction service
-```
-
----
-
 ## Architecture
 
 ```mermaid
