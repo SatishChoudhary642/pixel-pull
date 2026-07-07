@@ -35,6 +35,9 @@ public class PhotoService {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
+    @Value("${app.compose.dir:./}")
+    private String composeDir;
+
     @Transactional
     public List<Photo> uploadPhotos(List<MultipartFile> files, User user) {
         String batchId = UUID.randomUUID().toString();
@@ -179,52 +182,62 @@ public class PhotoService {
         return Math.sqrt(sum);
     }
 
-    // Runs the face_extractor C++ binary inside the running Docker worker container
-    // The binary loads the image, runs HOG + ResNet-34, and prints 128 comma-separated floats to stdout
-    private double[] extractFaceVectorViaCpp(String relativePath) throws IOException {
+    private Process faceExtractorProcess;
+    private java.io.BufferedWriter extractorWriter;
+    private BufferedReader extractorReader;
+
+    private synchronized void startFaceExtractor() throws IOException {
+        if (faceExtractorProcess != null && faceExtractorProcess.isAlive()) {
+            return; // Already running
+        }
+        
+        ProcessBuilder pb = new ProcessBuilder(
+            "docker", "compose", "-f", "compose.yaml", "exec", "-i", "worker",
+            "/app/worker/build/face_extractor"
+        );
+        pb.directory(new File(composeDir).getAbsoluteFile());
+        faceExtractorProcess = pb.start();
+        extractorWriter = new java.io.BufferedWriter(new java.io.OutputStreamWriter(faceExtractorProcess.getOutputStream()));
+        extractorReader = new BufferedReader(new InputStreamReader(faceExtractorProcess.getInputStream()));
+        
+        // Wait for READY signal
+        String line;
+        while ((line = extractorReader.readLine()) != null) {
+            if (line.equals("READY")) break;
+        }
+    }
+
+    private synchronized double[] extractFaceVectorViaCpp(String relativePath) throws IOException {
+        startFaceExtractor();
         String containerPath = "/var/pixelpull/uploads/" + relativePath;
 
-        // docker compose exec -T worker /app/worker/build/face_extractor <path>
-        // -T disables pseudo-TTY allocation so stdout is clean (no ANSI codes)
-        ProcessBuilder pb = new ProcessBuilder(
-            "docker", "compose", "-f", "compose.yaml", "exec", "-T", "worker",
-            "/app/worker/build/face_extractor", containerPath
-        );
-        // Run from the directory that contains compose.yaml
-        pb.directory(new File("."));
-
-        Process process = pb.start();
-
-        // Read stdout — face_extractor prints exactly one line: "0.0234,-0.0891,..."
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        String line = reader.readLine();
-
         try {
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                BufferedReader errReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                String err = errReader.lines().collect(Collectors.joining("\n"));
-                log.error("face_extractor exited with code {}: {}", exitCode, err);
-                throw new RuntimeException("face_extractor failed (exit " + exitCode + "): " + err);
+            extractorWriter.write(containerPath + "\n");
+            extractorWriter.flush();
+            
+            String line;
+            while ((line = extractorReader.readLine()) != null) {
+                if (line.startsWith("VECTOR:")) {
+                    String vectorData = line.substring(7);
+                    String[] parts = vectorData.split(",");
+                    if (parts.length != 128) {
+                        throw new RuntimeException("Expected 128 values from face_extractor, got: " + parts.length);
+                    }
+                    double[] vector = new double[128];
+                    for (int i = 0; i < 128; i++) {
+                        vector[i] = Double.parseDouble(parts[i].trim());
+                    }
+                    return vector;
+                } else if (line.startsWith("ERROR:")) {
+                    throw new RuntimeException("face_extractor error: " + line.substring(6));
+                }
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Interrupted while waiting for face extractor", e);
+        } catch (IOException e) {
+            // Process probably died, clean up so it restarts next time
+            faceExtractorProcess.destroy();
+            throw new RuntimeException("Communication with face_extractor failed", e);
         }
-
-        if (line == null || line.trim().isEmpty()) {
-            throw new RuntimeException("face_extractor produced no output. Is the image a valid photo with a visible face?");
-        }
-
-        // Parse the 128 comma-separated values into a primitive double array
-        String[] parts = line.trim().split(",");
-        if (parts.length != 128) {
-            throw new RuntimeException("Expected 128 values from face_extractor, got: " + parts.length);
-        }
-        double[] vector = new double[128];
-        for (int i = 0; i < 128; i++) {
-            vector[i] = Double.parseDouble(parts[i].trim());
-        }
-        return vector;
+        
+        throw new RuntimeException("face_extractor produced no output.");
     }
 }
