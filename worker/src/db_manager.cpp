@@ -150,7 +150,12 @@ bool DBManager::updatePhotoError(long photoId, const std::string& errorMsg) {
         pos += 2;
     }
     
-    std::string query = "UPDATE photos SET status = 'FAILED', error_message = '" + 
+    std::string targetStatus = "FAILED";
+    if (escapedMsg.find("No face detected") != std::string::npos) {
+        targetStatus = "NO_FACE_DETECTED";
+    }
+
+    std::string query = "UPDATE photos SET status = '" + targetStatus + "', error_message = '" + 
                        escapedMsg + "' WHERE id = " + std::to_string(photoId);
     
     PGresult* res = PQexec(conn, query.c_str());

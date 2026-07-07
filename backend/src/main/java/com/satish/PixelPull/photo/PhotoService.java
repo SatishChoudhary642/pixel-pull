@@ -120,16 +120,21 @@ public class PhotoService {
             if (!photos.isEmpty()) {
                 Photo firstPhoto = photos.get(0);
                 long processed = photos.stream().filter(p -> p.getStatus() == PhotoStatus.PROCESSED).count();
+                long noFace = photos.stream().filter(p -> p.getStatus() == PhotoStatus.NO_FACE_DETECTED).count();
                 long failed = photos.stream().filter(p -> p.getStatus() == PhotoStatus.FAILED).count();
                 long total = photos.size();
 
-                // A batch is done processing if all photos are either PROCESSED or FAILED
+                // A batch is done processing if all photos have reached a terminal state
                 String batchStatus;
-                if (processed + failed == total) {
-                    if (processed == 0) {
-                        batchStatus = "FAILED"; // Every single photo failed
+                long totalFinished = processed + noFace + failed;
+                
+                if (totalFinished == total) {
+                    if (failed == total) {
+                        batchStatus = "FAILED"; // Every single photo failed due to system error
+                    } else if (processed == 0 && noFace > 0) {
+                        batchStatus = "NO_FACES_FOUND"; // None failed, but zero faces were found in the whole batch
                     } else {
-                        batchStatus = "PROCESSED"; // Finished processing (some may have failed, but it's done)
+                        batchStatus = "PROCESSED"; // Finished processing
                     }
                 } else {
                     batchStatus = "PROCESSING"; // Still waiting on some photos
@@ -140,6 +145,7 @@ public class PhotoService {
                 batchInfo.put("accessCode", firstPhoto.getAccessCode());
                 batchInfo.put("photoCount", total);
                 batchInfo.put("processedCount", processed);
+                batchInfo.put("noFaceCount", noFace);
                 batchInfo.put("uploadTime", firstPhoto.getUploadTime().toString());
                 batchInfo.put("status", batchStatus);
                 batches.add(batchInfo);

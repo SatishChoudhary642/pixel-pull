@@ -88,15 +88,25 @@ export default function Dashboard() {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'PROCESSED': return <CheckCircle size={14} color="var(--green)" />;
+      case 'NO_FACES_FOUND': return <AlertCircle size={14} color="var(--text-secondary)" />;
       case 'FAILED':    return <XCircle size={14} color="var(--red)" />;
       default:          return <Clock size={14} color="#eab308" />;
     }
   };
 
   const getStatusLabel = (batch) => {
-    if (batch.status === 'PROCESSED') return 'All processed';
-    if (batch.status === 'FAILED') return 'Failed';
-    return `${batch.processedCount ?? 0} / ${batch.photoCount} processed`;
+    if (batch.status === 'PROCESSED' || batch.status === 'NO_FACES_FOUND') {
+      let parts = [];
+      if (batch.processedCount > 0) parts.push(`${batch.processedCount} faces found`);
+      if (batch.noFaceCount > 0) parts.push(`${batch.noFaceCount} skipped (no face)`);
+      if (batch.photoCount - batch.processedCount - batch.noFaceCount > 0) parts.push('some failed');
+      return parts.join(', ') || 'Finished';
+    }
+    if (batch.status === 'FAILED') return 'Failed (System Error)';
+    
+    // PROCESSING state
+    const done = (batch.processedCount || 0) + (batch.noFaceCount || 0);
+    return `${done} / ${batch.photoCount} processed`;
   };
 
   return (
