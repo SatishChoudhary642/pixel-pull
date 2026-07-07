@@ -29,7 +29,7 @@ public class PhotoController {
                                           @AuthenticationPrincipal UserDetails userDetails) {
 
         if (files == null || files.isEmpty()) {
-            return ResponseEntity.badRequest().body("No files provided");
+            return ResponseEntity.badRequest().body(Map.of("message", "No files provided"));
         }
 
         // Validate all files are images before processing any of them
@@ -38,7 +38,7 @@ public class PhotoController {
             String contentType = file.getContentType();
             if (contentType == null || !allowedTypes.contains(contentType.toLowerCase())) {
                 return ResponseEntity.badRequest()
-                        .body("Invalid file type: '" + contentType + "'. Only JPEG and PNG images are allowed.");
+                        .body(Map.of("message", "Invalid file type: '" + contentType + "'. Only JPEG and PNG images are allowed."));
             }
         }
 
@@ -81,7 +81,7 @@ public class PhotoController {
         } catch (Exception e) {
             log.error("Failed to fetch batches", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                               .body("Failed to fetch batches: " + e.getMessage());
+                               .body(Map.of("message", "Failed to fetch batches: " + e.getMessage()));
         }
     }
     
@@ -111,7 +111,7 @@ public class PhotoController {
         } catch (Exception e) {
             log.error("Search failed", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                               .body("Search failed: " + e.getMessage());
+                               .body(Map.of("message", "Search failed: " + e.getMessage()));
         }
     }
 }

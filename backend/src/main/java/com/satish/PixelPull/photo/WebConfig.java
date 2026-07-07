@@ -25,20 +25,4 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + uploadAbsolutePath + "/");
     }
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        // Allow the separate frontend (served on any local port) to call the API
-        registry.addMapping("/api/**")
-                .allowedOrigins(
-                    "http://localhost:5500",   // VS Code Live Server
-                    "http://127.0.0.1:5500",
-                    "http://localhost:3000",   // any local dev server
-                    "http://127.0.0.1:3000",
-                    "http://localhost:8081",   // same origin fallback
-                    "null"                     // file:// protocol (opening HTML directly)
-                )
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(false);
-    }
 }

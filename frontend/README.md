@@ -1,34 +1,16 @@
-# PixelPull Frontend
+# React + Vite
 
-Standalone HTML/CSS/JS frontend for the PixelPull platform.
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
-## Pages
+Currently, two official plugins are available:
 
-| File | Purpose |
-|------|---------|
-| `index.html` | Landing page |
-| `login.html` | Photographer sign in / register |
-| `dashboard.html` | Photographer upload + batch management |
-| `search.html` | Attendee face search |
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Running
+## React Compiler
 
-The backend (Spring Boot) must be running on `http://localhost:8081`.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-**Option 1 — VS Code Live Server (recommended)**
-1. Open the `frontend/` folder in VS Code
-2. Right-click `index.html` → **Open with Live Server**
-3. Opens at `http://127.0.0.1:5500`
+## Expanding the Oxlint configuration
 
-**Option 2 — IntelliJ built-in server**
-1. Open any `.html` file in IntelliJ
-2. Click the browser icon in the top-right corner of the editor
-
-**Option 3 — npx serve**
-```bash
-npx serve .
-```
-
-## API
-All requests go to `http://localhost:8081/api/...`  
-The backend has CORS configured to allow requests from localhost on common dev ports.
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
