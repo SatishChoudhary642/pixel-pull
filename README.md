@@ -127,7 +127,7 @@ flowchart TD
 
 2. Start the Spring Boot API:
    ```bash
-   cd PixelPull
+   cd backend
    ./mvnw spring-boot:run
    ```
 

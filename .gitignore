@@ -4,9 +4,9 @@
 *.iml
 
 # Spring Boot
-PixelPull/target/
-PixelPull/uploads/
-PixelPull/logs/
+backend/target/
+backend/uploads/
+backend/logs/
 
 # C++ Worker
 worker/build/
