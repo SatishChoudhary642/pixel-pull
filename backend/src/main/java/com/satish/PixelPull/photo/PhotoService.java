@@ -123,11 +123,17 @@ public class PhotoService {
                 long failed = photos.stream().filter(p -> p.getStatus() == PhotoStatus.FAILED).count();
                 long total = photos.size();
 
-                // Derive a simple status: PROCESSED if all done, FAILED if all failed, else PROCESSING
+                // A batch is done processing if all photos are either PROCESSED or FAILED
                 String batchStatus;
-                if (processed == total) batchStatus = "PROCESSED";
-                else if (failed == total) batchStatus = "FAILED";
-                else batchStatus = "PROCESSING";
+                if (processed + failed == total) {
+                    if (processed == 0) {
+                        batchStatus = "FAILED"; // Every single photo failed
+                    } else {
+                        batchStatus = "PROCESSED"; // Finished processing (some may have failed, but it's done)
+                    }
+                } else {
+                    batchStatus = "PROCESSING"; // Still waiting on some photos
+                }
 
                 Map<String, Object> batchInfo = new HashMap<>();
                 batchInfo.put("batchId", batchId);
