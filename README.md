@@ -56,6 +56,54 @@ graph TD
 
 ---
 
+## ML Pipeline Architecture
+
+Flow of a single photo through the C++ Dlib worker — one stage per face found.
+
+```mermaid
+flowchart TD
+    A[Group Photo JPEG] --> B
+
+    subgraph LOAD [Image Loading]
+        B[Decode JPEG to RGB pixel grid]
+    end
+
+    subgraph DETECT [Face Detection - HOG + SVM]
+        C[Compute edge gradients]
+        D[Slide detection window]
+        E[SVM classifies Face / Not Face]
+        C --> D --> E
+    end
+
+    subgraph PERFACE [Per Detected Face]
+        F[Landmark Detection - 68 keypoints]
+        G[Face Alignment - Crop and rotate to 150x150px]
+        H[ResNet-34 Embedding - 128 float numbers]
+        F --> G --> H
+    end
+
+    subgraph STORE [PostgreSQL Storage]
+        I[INSERT face vector]
+        J[UPDATE photo status PROCESSED]
+        I --> J
+    end
+
+    B --> C
+    E -->|N face rectangles| F
+    H -->|128D vector per face| I
+```
+
+| Stage | What goes in | What comes out |
+|-------|-------------|----------------|
+| Image Load | JPEG file (~3MB) | Raw pixel grid (~6M numbers) |
+| Face Detection | Full pixel grid | N bounding boxes |
+| Landmark Detection | One bounding box | 68 (x,y) points |
+| Face Alignment | 68 landmarks | 150×150 standardized chip |
+| ResNet Embedding | 150×150 chip | 128 float numbers |
+| Storage | 128 floats | 1 row in `photo_faces` per face |
+
+---
+
 ## Running Locally
 
 **Dependencies:** Docker Desktop, Java 17, Node.js 18+
