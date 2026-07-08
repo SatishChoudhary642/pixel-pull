@@ -43,6 +43,9 @@ public class Photo {
     @Column(name = "processed_time")
     private LocalDateTime processedTime;
     
+    @Column(name = "processing_started_at")
+    private LocalDateTime processingStartedAt;
+    
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 }
