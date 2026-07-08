@@ -68,15 +68,15 @@ std::vector<PendingPhoto> DBManager::getPendingPhotos(int limit) {
 
     PQclear(res);
 
-    // Immediately update the status to PROCESSING so the lock can be released
-    // The FOR UPDATE lock is held until we COMMIT or ROLLBACK
+    // Immediately update the status to PROCESSING and record the start time
+    // so the Spring Boot scheduler can detect stale jobs.
     if (!photos.empty()) {
         std::string ids = "";
         for (size_t i = 0; i < photos.size(); i++) {
             ids += std::to_string(photos[i].id);
             if (i < photos.size() - 1) ids += ",";
         }
-        std::string updateQuery = "UPDATE photos SET status = 'PROCESSING' WHERE id IN (" + ids + ")";
+        std::string updateQuery = "UPDATE photos SET status = 'PROCESSING', processing_started_at = NOW() WHERE id IN (" + ids + ")";
         PGresult* updateRes = PQexec(conn, updateQuery.c_str());
         PQclear(updateRes);
     }
