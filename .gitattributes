@@ -1,0 +1,5 @@
+# Tell GitHub Linguist to exclude third-party vendored headers
+# from language statistics. Without this, httplib.h (~12k lines of C++)
+# completely drowns out the actual Java/C++/JS source code.
+
+worker/include/** linguist-vendored=true
