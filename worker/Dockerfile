@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Download models
+# Download Dlib models
 RUN mkdir -p /app/models && cd /app/models \
     && wget http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 \
     && bunzip2 shape_predictor_68_face_landmarks.dat.bz2 \
@@ -33,15 +33,22 @@ RUN git clone https://github.com/davisking/dlib.git /opt/dlib \
     && cmake --build . --config Release \
     && make install
 
-# Copy worker source
+# Copy worker source (includes include/httplib.h vendored header)
 COPY . /app/worker
 
-# Build worker
+# Build both binaries: pixelpull_worker and face_extractor
 RUN cd /app/worker \
     && mkdir build && cd build \
     && cmake .. \
     && make -j4
 
-# Command
+# Expose the face_extractor HTTP microservice port
+EXPOSE 8090
+
 WORKDIR /app/worker/build
-CMD ["./pixelpull_worker"]
+
+# Start both processes:
+# 1. face_extractor — HTTP server on port 8090 for real-time selfie vectorization
+# 2. pixelpull_worker — background polling daemon for batch processing
+# We use a simple shell wrapper so both run inside the same container.
+CMD sh -c "./face_extractor & ./pixelpull_worker"

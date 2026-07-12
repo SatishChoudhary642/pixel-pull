@@ -19,8 +19,14 @@ services:
       - 'DB_NAME=mydatabase'
       - 'DB_USER=myuser'
       - 'DB_PASS=secret'
+      # Port the face_extractor HTTP server listens on inside the container
+      - 'EXTRACTOR_PORT=8090'
     depends_on:
       - pgvector
     restart: always
     volumes:
       - ./uploads:/var/pixelpull/uploads
+    ports:
+      # Expose the face_extractor HTTP microservice so the Spring Boot API can call it.
+      # Spring Boot (running on the host) reaches it at http://localhost:8090
+      - '8090:8090'
